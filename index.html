@@ -1,0 +1,1862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MicroEvolution: Cell Stage</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121826;
+            overflow: hidden;
+            height: 100vh;
+            color: #fff;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: none;
+        }
+        
+        #game-canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        #stats-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 14px;
+            pointer-events: none;
+        }
+        
+        #evolution-button {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            width: 60px;
+            height: 60px;
+            background-color: rgba(76, 175, 80, 0.8);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: white;
+            border: 2px solid #fff;
+            cursor: pointer;
+            pointer-events: auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            z-index: 100;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        
+        #evolution-button:hover {
+            transform: scale(1.05);
+            background-color: rgba(76, 185, 80, 0.9);
+        }
+        
+        #upgrade-menu {
+            position: absolute;
+            bottom: 110px;
+            left: 40px;
+            display: none;
+            z-index: 100;
+            pointer-events: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        
+        .upgrade-button {
+            width: 52px;
+            height: 52px;
+            background-color: rgba(60, 120, 200, 0.8);
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            position: relative;
+            transition: transform 0.2s ease, background-color 0.2s ease;
+        }
+        
+        .upgrade-button:hover {
+            transform: scale(1.05);
+        }
+        
+        .upgrade-button.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .upgrade-icon {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+        
+        .upgrade-name {
+            font-weight: bold;
+            font-size: 10px;
+            text-align: center;
+        }
+        
+        .upgrade-description {
+            display: none;
+        }
+        
+        .upgrade-cost {
+            position: absolute;
+            bottom: -7px;
+            right: -7px;
+            background-color: rgba(255, 193, 7, 0.9);
+            color: #000;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        #progress-bar {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 150px;
+            height: 15px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        #progress-fill {
+            height: 100%;
+            width: 0;
+            background-color: #4CAF50;
+            transition: width 0.3s;
+        }
+        
+        #level-indicator {
+            position: absolute;
+            top: 30px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        
+        #help-button {
+            position: absolute;
+            top: 60px;
+            right: 10px;
+            width: 30px;
+            height: 30px;
+            background-color: rgba(0, 0, 0, 0.6);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            color: white;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        
+        #tutorial {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(30, 40, 65, 0.95);
+            border-radius: 15px;
+            padding: 15px;
+            max-width: 80%;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 11;
+            pointer-events: auto;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        
+        #tutorial h2 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        
+        #tutorial p {
+            margin-bottom: 8px;
+            line-height: 1.3;
+            font-size: 14px;
+        }
+        
+        #close-tutorial {
+            display: block;
+            margin: 10px auto 0;
+            padding: 8px 20px;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        #message-popup {
+            position: absolute;
+            top: 100px;
+            right: 10px;
+            width: 200px;
+            background-color: rgba(30, 40, 65, 0.8);
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+            z-index: 12;
+            pointer-events: auto;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            font-size: 14px;
+        }
+        
+        #message-popup h2 {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        
+        #message-popup p {
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        
+        #restart-button {
+            margin-top: 10px;
+            padding: 5px 15px;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        #virtual-joystick {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            width: 100px;
+            height: 100px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: auto;
+            z-index: 5;
+            touch-action: none;
+        }
+        
+        #joystick-knob {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background-color: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        
+        #fog-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 9;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="fog-container"></div>
+        
+        <div id="ui-layer">
+            <div id="stats-panel">
+                <div>Size: <span id="size-stat">1.0</span></div>
+                <div>DNA: <span id="dna-stat">0</span></div>
+                <div>Health: <span id="health-stat">100</span>%</div>
+            </div>
+            
+            <div id="progress-bar">
+                <div id="progress-fill"></div>
+            </div>
+            
+            <div id="level-indicator">Level: <span id="level-stat">1</span></div>
+            
+            <div id="evolution-button">+</div>
+            
+            <!-- Modified upgrade menu -->
+            <div id="upgrade-menu">
+                <div id="speed-upgrade" class="upgrade-button">
+                    <div class="upgrade-icon">⚡</div>
+                    <div class="upgrade-name">Speed</div>
+                    <div class="upgrade-description">Move faster to catch prey</div>
+                    <div class="upgrade-cost">15</div>
+                </div>
+                
+                <div id="size-upgrade" class="upgrade-button">
+                    <div class="upgrade-icon">⭕</div>
+                    <div class="upgrade-name">Size</div>
+                    <div class="upgrade-description">Grow larger</div>
+                    <div class="upgrade-cost">20</div>
+                </div>
+                
+                <div id="efficiency-upgrade" class="upgrade-button">
+                    <div class="upgrade-icon">🧬</div>
+                    <div class="upgrade-name">DNA</div>
+                    <div class="upgrade-description">Extract more DNA</div>
+                    <div class="upgrade-cost">25</div>
+                </div>
+                
+                <div id="defense-upgrade" class="upgrade-button">
+                    <div class="upgrade-icon">🛡️</div>
+                    <div class="upgrade-name">Wall</div>
+                    <div class="upgrade-description">Reduce damage</div>
+                    <div class="upgrade-cost">30</div>
+                </div>
+                
+                <div id="sensing-upgrade" class="upgrade-button">
+                    <div class="upgrade-icon">👁️</div>
+                    <div class="upgrade-name">Sense</div>
+                    <div class="upgrade-description">Detect from further</div>
+                    <div class="upgrade-cost">35</div>
+                </div>
+            </div>
+            
+            <div id="help-button">?</div>
+            
+            <div id="tutorial">
+                <h2>MicroEvolution: Cell Stage</h2>
+                <p>You are a tiny microorganism trying to survive and evolve in a primordial soup!</p>
+                <p><strong>Controls:</strong></p>
+                <p>• Touch/click anywhere to move directly to that location</p>
+                <p>• Use the joystick in the bottom right for precise movement control</p>
+                <p>• Tap the + button in bottom left to access evolution upgrades</p>
+                <p><strong>Basic Gameplay:</strong></p>
+                <p>• <strong>Eat smaller organisms and nutrients</strong> (green and blue dots) to gain DNA</p>
+                <p>• <strong>Avoid larger predators</strong> (red cells) that can damage or consume you</p>
+                <p><strong>Upgrades:</strong></p>
+                <p>• <strong>Speed ⚡</strong> - Move faster to catch prey and escape predators</p>
+                <p>• <strong>Size ⭕</strong> - Grow larger to consume bigger organisms</p>
+                <p>• <strong>Efficiency 🧬</strong> - Extract more DNA from consumed matter</p>
+                <p>• <strong>Defense 🛡️</strong> - Toughen your exterior to reduce damage</p>
+                <p>• <strong>Sensing 👁️</strong> - Detect food and predators from further away</p>
+                <p><strong>Goal:</strong> Reach Level 10 to complete the cellular stage!</p>
+                <button id="close-tutorial">Start Playing</button>
+            </div>
+            
+            <div id="message-popup">
+                <h2 id="message-title">Game Over</h2>
+                <p id="message-content">Your microorganism has been consumed by the primordial soup!</p>
+                <button id="restart-button">Try Again</button>
+            </div>
+            
+            <div id="virtual-joystick">
+                <div id="joystick-knob"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Canvas setup
+            const canvas = document.getElementById('game-canvas');
+            const ctx = canvas.getContext('2d');
+            const fogContainer = document.getElementById('fog-container');
+            
+            // Set canvas to window size
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // UI Elements
+            const evolutionBtn = document.getElementById('evolution-button');
+            const upgradeMenu = document.getElementById('upgrade-menu');
+            const speedUpgradeBtn = document.getElementById('speed-upgrade');
+            const sizeUpgradeBtn = document.getElementById('size-upgrade');
+            const efficiencyUpgradeBtn = document.getElementById('efficiency-upgrade');
+            const defenseUpgradeBtn = document.getElementById('defense-upgrade');
+            const sensingUpgradeBtn = document.getElementById('sensing-upgrade');
+            const helpBtn = document.getElementById('help-button');
+            const tutorial = document.getElementById('tutorial');
+            const closeTutorialBtn = document.getElementById('close-tutorial');
+            const messagePopup = document.getElementById('message-popup');
+            const restartBtn = document.getElementById('restart-button');
+            const sizeDisplay = document.getElementById('size-stat');
+            const dnaDisplay = document.getElementById('dna-stat');
+            const healthDisplay = document.getElementById('health-stat');
+            const progressFill = document.getElementById('progress-fill');
+            const levelDisplay = document.getElementById('level-stat');
+            const joystickElement = document.getElementById('virtual-joystick');
+            const joystickKnob = document.getElementById('joystick-knob');
+            
+            // Game Constants
+            const WORLD_SIZE = 2000;
+            const NUTRIENT_COUNT = 100;
+            const MICROBE_COUNT = 30;
+            const PREDATOR_COUNT = 5;
+            
+            // Game variables
+            let playerCell = {
+                x: WORLD_SIZE / 2,
+                y: WORLD_SIZE / 2,
+                radius: 15,
+                speed: 3,
+                color: '#4CAF50',
+                targetX: WORLD_SIZE / 2,
+                targetY: WORLD_SIZE / 2,
+                dna: 0,
+                health: 100,
+                digestionEfficiency: 1,
+                defense: 1,
+                sensorRange: 100,
+                level: 1,
+                experience: 0,
+                experienceToLevel: 100
+            };
+            
+            let camera = {
+                x: playerCell.x - canvas.width / 2,
+                y: playerCell.y - canvas.height / 2,
+                smoothing: 0.1
+            };
+            
+            let nutrients = [];
+            let microbes = [];
+            let predators = [];
+            let particles = [];
+            let gameRunning = true;
+            let gamePaused = false;
+            let evolutionLevels = {
+                speed: 1,
+                size: 1,
+                efficiency: 1,
+                defense: 1,
+                sensing: 1
+            };
+            
+            // Fog of war variables
+            let fogCanvas = null;
+            let fogCtx = null;
+            let fogOfWarEnabled = true;
+            
+            // Upgrade Menu variables
+            let upgradeMenuVisible = false;
+            // Ensure menu is hidden by default
+            upgradeMenu.style.display = 'none';
+            
+            // Toggle upgrade menu visibility
+            function toggleUpgradeMenu() {
+                upgradeMenuVisible = !upgradeMenuVisible;
+                
+                if (upgradeMenuVisible) {
+                    upgradeMenu.style.display = 'flex';
+                    setTimeout(() => {
+                        upgradeMenu.style.opacity = '1';
+                        upgradeMenu.style.transform = 'translateY(0)';
+                    }, 10);
+                    evolutionBtn.innerHTML = '×';
+                    updateUpgradeCosts();
+                } else {
+                    upgradeMenu.style.opacity = '0';
+                    upgradeMenu.style.transform = 'translateY(20px)';
+                    setTimeout(() => {
+                        upgradeMenu.style.display = 'none';
+                    }, 300); // Match transition duration
+                    evolutionBtn.innerHTML = '+';
+                }
+            }
+            
+            // Update upgrade buttons based on evolution levels
+            function updateUpgradeCosts() {
+                const upgrades = [
+                    { element: speedUpgradeBtn, type: 'speed', baseCost: 15 },
+                    { element: sizeUpgradeBtn, type: 'size', baseCost: 20 },
+                    { element: efficiencyUpgradeBtn, type: 'efficiency', baseCost: 25 },
+                    { element: defenseUpgradeBtn, type: 'defense', baseCost: 30 },
+                    { element: sensingUpgradeBtn, type: 'sensing', baseCost: 35 }
+                ];
+                
+                upgrades.forEach(upgrade => {
+                    const level = evolutionLevels[upgrade.type];
+                    const cost = upgrade.baseCost * level;
+                    
+                    // Update cost display
+                    const costElement = upgrade.element.querySelector('.upgrade-cost');
+                    if (costElement) {
+                        costElement.textContent = cost;
+                    }
+                    
+                    // Update disabled state
+                    if (playerCell.dna < cost) {
+                        upgrade.element.classList.add('disabled');
+                    } else {
+                        upgrade.element.classList.remove('disabled');
+                    }
+                });
+            }
+            
+            // Joystick variables
+            let joystickActive = false;
+            let joystickTouchId = null;
+            let joystickCenter = { x: 0, y: 0 };
+            let joystickPosition = { x: 0, y: 0 };
+            
+            // Initialize joystick center position
+            function initJoystick() {
+                const rect = joystickElement.getBoundingClientRect();
+                joystickCenter = {
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2
+                };
+            }
+            
+            // Update joystick position and player movement
+            function updateJoystick() {
+                if (joystickActive) {
+                    // Calculate joystick vector (direction and power)
+                    const dx = joystickPosition.x - joystickCenter.x;
+                    const dy = joystickPosition.y - joystickCenter.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Limit to joystick radius
+                    const joystickRadius = joystickElement.clientWidth / 2;
+                    const limitedDistance = Math.min(distance, joystickRadius);
+                    
+                    // Calculate normalized direction
+                    let nx = 0, ny = 0;
+                    if (distance > 0) {
+                        nx = dx / distance * limitedDistance;
+                        ny = dy / distance * limitedDistance;
+                    }
+                    
+                    // Update knob position
+                    joystickKnob.style.transform = `translate(calc(-50% + ${nx}px), calc(-50% + ${ny}px))`;
+                    
+                    // Move player in that direction (if joystick moved enough)
+                    if (distance > 5) {
+                        // Scale nx and ny to world scale
+                        const worldScale = 1000; // How far ahead to target
+                        playerCell.targetX = playerCell.x + (dx / joystickRadius) * worldScale;
+                        playerCell.targetY = playerCell.y + (dy / joystickRadius) * worldScale;
+                    }
+                } else {
+                    // Reset knob position when inactive
+                    joystickKnob.style.transform = 'translate(-50%, -50%)';
+                }
+            }
+            
+            // Initialize fog of war
+            function initFogOfWar() {
+                fogCanvas = document.createElement('canvas');
+                fogCanvas.width = canvas.width;
+                fogCanvas.height = canvas.height;
+                fogCanvas.style.position = 'absolute';
+                fogCanvas.style.top = '0';
+                fogCanvas.style.left = '0';
+                fogCanvas.style.pointerEvents = 'none';
+                fogContainer.appendChild(fogCanvas);
+                
+                fogCtx = fogCanvas.getContext('2d');
+                
+                // Listen for window resize to update fog canvas size
+                window.addEventListener('resize', () => {
+                    fogCanvas.width = window.innerWidth;
+                    fogCanvas.height = window.innerHeight;
+                });
+            }
+            
+            // Create particle effect
+            function createParticle(x, y, color) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 3,
+                    vy: (Math.random() - 0.5) * 3,
+                    radius: 2 + Math.random() * 3,
+                    color: color,
+                    opacity: 1
+                });
+            }
+            
+            // Update fog of war based on player position and sensor range
+            function updateFogOfWar() {
+                if (!fogOfWarEnabled || !fogCtx) return;
+                
+                // Clear the fog canvas
+                fogCtx.clearRect(0, 0, fogCanvas.width, fogCanvas.height);
+                
+                // Calculate visible radius based on sensing level
+                const senseLevel = evolutionLevels.sensing;
+                const baseRadius = 120;
+                const visibleRadius = baseRadius + ((senseLevel - 1) * 50);
+                
+                // Create a dark overlay with a clear circle around the player
+                fogCtx.fillStyle = 'rgba(0, 10, 30, 0.7)';
+                fogCtx.fillRect(0, 0, fogCanvas.width, fogCanvas.height);
+                
+                // Create the clear circle where the player can see
+                fogCtx.globalCompositeOperation = 'destination-out';
+                
+                // Create a radial gradient for smooth fog edges
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const gradient = fogCtx.createRadialGradient(
+                    centerX, centerY, visibleRadius * 0.7,
+                    centerX, centerY, visibleRadius
+                );
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                
+                fogCtx.fillStyle = gradient;
+                fogCtx.beginPath();
+                fogCtx.arc(centerX, centerY, visibleRadius, 0, Math.PI * 2);
+                fogCtx.fill();
+                
+                // Reset composite operation
+                fogCtx.globalCompositeOperation = 'source-over';
+            }
+            
+            // Generate nutrients (food)
+            function generateNutrients() {
+                nutrients = [];
+                for (let i = 0; i < NUTRIENT_COUNT; i++) {
+                    nutrients.push({
+                        x: Math.random() * WORLD_SIZE,
+                        y: Math.random() * WORLD_SIZE,
+                        radius: 3 + Math.random() * 3,
+                        color: Math.random() > 0.5 ? '#8BC34A' : '#03A9F4',
+                        value: Math.random() * 3 + 1,
+                        wobble: Math.random() * 0.2
+                    });
+                }
+            }
+            
+            // Generate microbes (smaller food)
+            function generateMicrobes() {
+                microbes = [];
+                for (let i = 0; i < MICROBE_COUNT; i++) {
+                    const radius = 5 + Math.random() * 10;
+                    microbes.push({
+                        x: Math.random() * WORLD_SIZE,
+                        y: Math.random() * WORLD_SIZE,
+                        radius: radius,
+                        speed: 1 + Math.random() * 1.5,
+                        color: radius < 12 ? '#CDDC39' : '#FF9800',
+                        targetX: Math.random() * WORLD_SIZE,
+                        targetY: Math.random() * WORLD_SIZE,
+                        value: radius * 0.8,
+                        updateTarget: 0,
+                        wobble: Math.random() * 0.3
+                    });
+                }
+            }
+            
+            // Generate predators (dangerous enemies)
+            function generatePredators() {
+                predators = [];
+                for (let i = 0; i < PREDATOR_COUNT; i++) {
+                    const radius = 20 + Math.random() * 20;
+                    predators.push({
+                        x: Math.random() * WORLD_SIZE,
+                        y: Math.random() * WORLD_SIZE,
+                        radius: radius,
+                        speed: 1 + Math.random() * 1.5,
+                        color: '#F44336',
+                        targetX: Math.random() * WORLD_SIZE,
+                        targetY: Math.random() * WORLD_SIZE,
+                        value: radius * 1.5,
+                        updateTarget: 0,
+                        wobble: Math.random() * 0.2,
+                        spikes: Math.floor(5 + Math.random() * 4),
+                        rotation: 0,
+                        rotationSpeed: (Math.random() - 0.5) * 0.02
+                    });
+                }
+            }
+            
+            // Game loop
+            function gameLoop() {
+                if (!gameRunning) return;
+                
+                if (!gamePaused) {
+                    updateGame();
+                }
+                
+                drawGame();
+                updateFogOfWar();
+                
+                requestAnimationFrame(gameLoop);
+            }
+            
+            // Update game state
+            function updateGame() {
+                // Update joystick if active
+                updateJoystick();
+                
+                updatePlayer();
+                updateCamera();
+                updateNutrients();
+                updateMicrobes();
+                updatePredators();
+                updateParticles();
+                checkCollisions();
+                
+                // Replenish nutrients occasionally
+                if (Math.random() < 0.02 && nutrients.length < NUTRIENT_COUNT) {
+                    nutrients.push({
+                        x: Math.random() * WORLD_SIZE,
+                        y: Math.random() * WORLD_SIZE,
+                        radius: 3 + Math.random() * 3,
+                        color: Math.random() > 0.5 ? '#8BC34A' : '#03A9F4',
+                        value: Math.random() * 3 + 1,
+                        wobble: Math.random() * 0.2
+                    });
+                }
+                
+                // Update UI
+                sizeDisplay.textContent = playerCell.radius.toFixed(1);
+                dnaDisplay.textContent = Math.floor(playerCell.dna);
+                healthDisplay.textContent = Math.floor(playerCell.health);
+                progressFill.style.width = (playerCell.experience / playerCell.experienceToLevel * 100) + '%';
+                levelDisplay.textContent = playerCell.level;
+                
+                // If upgrade menu is visible, update costs
+                if (upgradeMenuVisible) {
+                    updateUpgradeCosts();
+                }
+                
+                // Check level up
+                if (playerCell.experience >= playerCell.experienceToLevel) {
+                    levelUp();
+                }
+                
+                // Check game over
+                if (playerCell.health <= 0) {
+                    gameOver();
+                }
+                
+                // Win condition
+                if (playerCell.level >= 10) {
+                    victory();
+                }
+            }
+            
+            // Level up
+            function levelUp() {
+                playerCell.level++;
+                playerCell.experience = 0;
+                playerCell.experienceToLevel = playerCell.level * 100;
+                
+                // Bonus DNA on level up
+                playerCell.dna += playerCell.level * 10;
+                
+                // Visual effect
+                for (let i = 0; i < 20; i++) {
+                    createParticle(playerCell.x, playerCell.y, '#FFD700');
+                }
+                
+                showMessage('Level Up!', `You've reached level ${playerCell.level}! You gained ${playerCell.level * 10} bonus DNA.`);
+            }
+            
+            // Update player position and state
+            function updatePlayer() {
+                // Move towards target
+                const dx = playerCell.targetX - playerCell.x;
+                const dy = playerCell.targetY - playerCell.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 5) {
+                    playerCell.x += (dx / distance) * playerCell.speed;
+                    playerCell.y += (dy / distance) * playerCell.speed;
+                }
+                
+                // Boundary check
+                playerCell.x = Math.max(playerCell.radius, Math.min(WORLD_SIZE - playerCell.radius, playerCell.x));
+                playerCell.y = Math.max(playerCell.radius, Math.min(WORLD_SIZE - playerCell.radius, playerCell.y));
+                
+                // Slowly regenerate health
+                if (playerCell.health < 100) {
+                    playerCell.health += 0.01;
+                    if (playerCell.health > 100) playerCell.health = 100;
+                }
+            }
+            
+            // Update camera position
+            function updateCamera() {
+                // Camera follows player with smooth movement
+                const targetX = playerCell.x - canvas.width / 2;
+                const targetY = playerCell.y - canvas.height / 2;
+                
+                camera.x += (targetX - camera.x) * camera.smoothing;
+                camera.y += (targetY - camera.y) * camera.smoothing;
+            }
+            
+            // Update nutrients
+            function updateNutrients() {
+                for (let i = 0; i < nutrients.length; i++) {
+                    // Add some gentle movement
+                    nutrients[i].x += Math.sin(Date.now() * 0.001 + i) * nutrients[i].wobble;
+                    nutrients[i].y += Math.cos(Date.now() * 0.001 + i) * nutrients[i].wobble;
+                    
+                    // Keep in bounds
+                    nutrients[i].x = Math.max(0, Math.min(WORLD_SIZE, nutrients[i].x));
+                    nutrients[i].y = Math.max(0, Math.min(WORLD_SIZE, nutrients[i].y));
+                }
+            }
+            
+            // Update microbes
+            function updateMicrobes() {
+                for (let i = 0; i < microbes.length; i++) {
+                    const microbe = microbes[i];
+                    
+                    // Update target occasionally
+                    microbe.updateTarget++;
+                    if (microbe.updateTarget > 100) {
+                        microbe.targetX = Math.random() * WORLD_SIZE;
+                        microbe.targetY = Math.random() * WORLD_SIZE;
+                        microbe.updateTarget = 0;
+                    }
+                    
+                    // Flee from player if close and player is bigger
+                    const dx = playerCell.x - microbe.x;
+                    const dy = playerCell.y - microbe.y;
+                    const distToPlayer = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distToPlayer < playerCell.sensorRange && playerCell.radius > microbe.radius) {
+                        microbe.targetX = microbe.x - dx;
+                        microbe.targetY = microbe.y - dy;
+                        microbe.updateTarget = 0;
+                    }
+                    
+                    // Move towards target
+                    const mDx = microbe.targetX - microbe.x;
+                    const mDy = microbe.targetY - microbe.y;
+                    const mDist = Math.sqrt(mDx * mDx + mDy * mDy);
+                    
+                    if (mDist > 5) {
+                        microbe.x += (mDx / mDist) * microbe.speed;
+                        microbe.y += (mDy / mDist) * microbe.speed;
+                    }
+                    
+                    // Add wobble
+                    microbe.x += Math.sin(Date.now() * 0.001 + i) * microbe.wobble;
+                    microbe.y += Math.cos(Date.now() * 0.001 + i) * microbe.wobble;
+                    
+                    // Keep in bounds
+                    microbe.x = Math.max(microbe.radius, Math.min(WORLD_SIZE - microbe.radius, microbe.x));
+                    microbe.y = Math.max(microbe.radius, Math.min(WORLD_SIZE - microbe.radius, microbe.y));
+                }
+            }
+            
+            // Update predators
+            function updatePredators() {
+                for (let i = 0; i < predators.length; i++) {
+                    const predator = predators[i];
+                    
+                    // Update target occasionally
+                    predator.updateTarget++;
+                    if (predator.updateTarget > 120) {
+                        predator.targetX = Math.random() * WORLD_SIZE;
+                        predator.targetY = Math.random() * WORLD_SIZE;
+                        predator.updateTarget = 0;
+                    }
+                    
+                    // Chase player if within range and player is smaller
+                    const dx = playerCell.x - predator.x;
+                    const dy = playerCell.y - predator.y;
+                    const distToPlayer = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distToPlayer < predator.radius * 5 && predator.radius > playerCell.radius * 1.2) {
+                        predator.targetX = playerCell.x;
+                        predator.targetY = playerCell.y;
+                        predator.updateTarget = 0;
+                    }
+                    
+                    // Flee from player if player is big enough to eat the predator
+                    if (distToPlayer < playerCell.sensorRange && playerCell.radius > predator.radius * 1.2) {
+                        predator.targetX = predator.x - dx;
+                        predator.targetY = predator.y - dy;
+                        predator.updateTarget = 0;
+                    }
+                    
+                    // Move towards target
+                    const pDx = predator.targetX - predator.x;
+                    const pDy = predator.targetY - predator.y;
+                    const pDist = Math.sqrt(pDx * pDx + pDy * pDy);
+                    
+                    if (pDist > 5) {
+                        predator.x += (pDx / pDist) * predator.speed;
+                        predator.y += (pDy / pDist) * predator.speed;
+                    }
+                    
+                    // Add wobble
+                    predator.x += Math.sin(Date.now() * 0.001 + i) * predator.wobble;
+                    predator.y += Math.cos(Date.now() * 0.001 + i) * predator.wobble;
+                    
+                    // Keep in bounds
+                    predator.x = Math.max(predator.radius, Math.min(WORLD_SIZE - predator.radius, predator.x));
+                    predator.y = Math.max(predator.radius, Math.min(WORLD_SIZE - predator.radius, predator.y));
+                    
+                    // Rotate
+                    predator.rotation += predator.rotationSpeed;
+                }
+            }
+            
+            // Update particles
+            function updateParticles() {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const particle = particles[i];
+                    
+                    // Move particle
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    
+                    // Apply friction
+                    particle.vx *= 0.95;
+                    particle.vy *= 0.95;
+                    
+                    // Reduce size and opacity
+                    particle.radius *= 0.95;
+                    particle.opacity -= 0.02;
+                    
+                    // Remove if too small or transparent
+                    if (particle.radius < 0.5 || particle.opacity <= 0) {
+                        particles.splice(i, 1);
+                    }
+                }
+            }
+            
+            // Check for collisions
+            function checkCollisions() {
+                // Player vs nutrients
+                for (let i = nutrients.length - 1; i >= 0; i--) {
+                    const dx = playerCell.x - nutrients[i].x;
+                    const dy = playerCell.y - nutrients[i].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < playerCell.radius + nutrients[i].radius) {
+                        // Eat nutrient
+                        const dnaGain = nutrients[i].value * playerCell.digestionEfficiency;
+                        playerCell.dna += dnaGain;
+                        playerCell.experience += dnaGain;
+                        
+                        // Create particles
+                        for (let j = 0; j < 3; j++) {
+                            createParticle(nutrients[i].x, nutrients[i].y, nutrients[i].color);
+                        }
+                        
+                        // Remove nutrient
+                        nutrients.splice(i, 1);
+                    }
+                }
+                
+                // Player vs microbes
+                for (let i = microbes.length - 1; i >= 0; i--) {
+                    const dx = playerCell.x - microbes[i].x;
+                    const dy = playerCell.y - microbes[i].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < playerCell.radius + microbes[i].radius) {
+                        // Check if player can eat microbe
+                        if (playerCell.radius > microbes[i].radius * 1.2) {
+                            // Eat microbe
+                            const dnaGain = microbes[i].value * playerCell.digestionEfficiency;
+                            playerCell.dna += dnaGain;
+                            playerCell.experience += dnaGain * 2;
+                            
+                            // Slight growth
+                            playerCell.radius += 0.05;
+                            
+                            // Create particles
+                            for (let j = 0; j < 5; j++) {
+                                createParticle(microbes[i].x, microbes[i].y, microbes[i].color);
+                            }
+                            
+                            // Remove microbe
+                            microbes.splice(i, 1);
+                            
+                            // Add a new microbe somewhere else
+                            if (Math.random() > 0.3) {
+                                const radius = 5 + Math.random() * 10;
+                                microbes.push({
+                                    x: Math.random() * WORLD_SIZE,
+                                    y: Math.random() * WORLD_SIZE,
+                                    radius: radius,
+                                    speed: 1 + Math.random() * 1.5,
+                                    color: radius < 12 ? '#CDDC39' : '#FF9800',
+                                    targetX: Math.random() * WORLD_SIZE,
+                                    targetY: Math.random() * WORLD_SIZE,
+                                    value: radius * 0.8,
+                                    updateTarget: 0,
+                                    wobble: Math.random() * 0.3
+                                });
+                            }
+                        } else if (microbes[i].radius > playerCell.radius * 1.2) {
+                            // Microbe damages player
+                            const damage = 5 / playerCell.defense;
+                            playerCell.health -= damage;
+                            
+                            // Create damage particles
+                            for (let j = 0; j < 3; j++) {
+                                createParticle(playerCell.x, playerCell.y, '#FFFFFF');
+                            }
+                            
+                            // Push player away
+                            playerCell.x -= (dx / distance) * 5;
+                            playerCell.y -= (dy / distance) * 5;
+                        }
+                    }
+                }
+                
+                // Player vs predators
+                for (let i = predators.length - 1; i >= 0; i--) {
+                    const dx = playerCell.x - predators[i].x;
+                    const dy = playerCell.y - predators[i].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < playerCell.radius + predators[i].radius) {
+                        // Check if player can eat predator
+                        if (playerCell.radius > predators[i].radius * 1.2) {
+                            // Eat predator
+                            const dnaGain = predators[i].value * playerCell.digestionEfficiency;
+                            playerCell.dna += dnaGain;
+                            playerCell.experience += dnaGain * 3;
+                            
+                            // Growth
+                            playerCell.radius += 0.2;
+                            
+                            // Create particles
+                            for (let j = 0; j < 10; j++) {
+                                createParticle(predators[i].x, predators[i].y, predators[i].color);
+                            }
+                            
+                            // Remove predator
+                            predators.splice(i, 1);
+                            
+                            // Add a new predator somewhere else
+                            if (Math.random() > 0.3) {
+                                const radius = 20 + Math.random() * 20;
+                                predators.push({
+                                    x: Math.random() * WORLD_SIZE,
+                                    y: Math.random() * WORLD_SIZE,
+                                    radius: radius,
+                                    speed: 1 + Math.random() * 1.5,
+                                    color: '#F44336',
+                                    targetX: Math.random() * WORLD_SIZE,
+                                    targetY: Math.random() * WORLD_SIZE,
+                                    value: radius * 1.5,
+                                    updateTarget: 0,
+                                    wobble: Math.random() * 0.2,
+                                    spikes: Math.floor(5 + Math.random() * 4),
+                                    rotation: 0,
+                                    rotationSpeed: (Math.random() - 0.5) * 0.02
+                                });
+                            }
+                        } else if (predators[i].radius > playerCell.radius * 1.2) {
+                            // Predator damages player
+                            const damage = 10 / playerCell.defense;
+                            playerCell.health -= damage;
+                            
+                            // Create damage particles
+                            for (let j = 0; j < 5; j++) {
+                                createParticle(playerCell.x, playerCell.y, '#FFFFFF');
+                            }
+                            
+                            // Push player away
+                            playerCell.x -= (dx / distance) * 10;
+                            playerCell.y -= (dy / distance) * 10;
+                        }
+                    }
+                }
+            }
+            
+            // Draw particles
+            function drawParticles() {
+                for (let i = 0; i < particles.length; i++) {
+                    const particle = particles[i];
+                    const screenX = particle.x - camera.x;
+                    const screenY = particle.y - camera.y;
+                    
+                    // Check if on screen
+                    if (isOnScreen(screenX, screenY, particle.radius)) {
+                        // Check visibility in fog of war
+                        const visibility = isVisibleToPlayer(particle.x, particle.y);
+                        
+                        // Only draw if at least partially visible
+                        if (visibility > 0) {
+                            // Combine particle's own opacity with fog visibility
+                            ctx.globalAlpha = particle.opacity * visibility;
+                            ctx.beginPath();
+                            ctx.arc(screenX, screenY, particle.radius, 0, Math.PI * 2);
+                            ctx.fillStyle = particle.color;
+                            ctx.fill();
+                            ctx.globalAlpha = 1;
+                        }
+                    }
+                }
+            }
+            
+            // Draw game
+            function drawGame() {
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw background
+                ctx.fillStyle = '#1A2B40';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw grid
+                drawGrid();
+                
+                // Draw game border
+                drawBorder();
+                
+                // Draw elements
+                drawNutrients();
+                drawMicrobes();
+                drawPredators();
+                drawPlayer();
+                drawParticles();
+            }
+            
+            // Draw grid
+            function drawGrid() {
+                const gridSize = 100;
+                const offsetX = camera.x % gridSize;
+                const offsetY = camera.y % gridSize;
+                
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.lineWidth = 1;
+                
+                // Vertical lines
+                for (let x = -offsetX; x <= canvas.width; x += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                
+                // Horizontal lines
+                for (let y = -offsetY; y <= canvas.height; y += gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+            }
+            
+            // Draw world border
+            function drawBorder() {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(-camera.x, -camera.y, WORLD_SIZE, WORLD_SIZE);
+            }
+            
+            // Check if object is on screen
+            function isOnScreen(x, y, radius) {
+                return (
+                    x + radius > 0 &&
+                    x - radius < canvas.width &&
+                    y + radius > 0 &&
+                    y - radius < canvas.height
+                );
+            }
+            
+            // Draw nutrients
+            function drawNutrients() {
+                for (let i = 0; i < nutrients.length; i++) {
+                    const nutrient = nutrients[i];
+                    const screenX = nutrient.x - camera.x;
+                    const screenY = nutrient.y - camera.y;
+                    
+                    // Check if on screen
+                    if (isOnScreen(screenX, screenY, nutrient.radius)) {
+                        // Check visibility in fog of war
+                        const visibility = isVisibleToPlayer(nutrient.x, nutrient.y);
+                        
+                        // Only draw if at least partially visible
+                        if (visibility > 0) {
+                            ctx.globalAlpha = visibility;
+                            ctx.beginPath();
+                            ctx.arc(screenX, screenY, nutrient.radius, 0, Math.PI * 2);
+                            ctx.fillStyle = nutrient.color;
+                            ctx.fill();
+                            ctx.globalAlpha = 1.0;
+                        }
+                    }
+                }
+            }
+            
+            // Draw microbes
+            function drawMicrobes() {
+                for (let i = 0; i < microbes.length; i++) {
+                    const microbe = microbes[i];
+                    const screenX = microbe.x - camera.x;
+                    const screenY = microbe.y - camera.y;
+                    
+                    // Check if on screen
+                    if (isOnScreen(screenX, screenY, microbe.radius)) {
+                        // Check visibility in fog of war
+                        const visibility = isVisibleToPlayer(microbe.x, microbe.y);
+                        
+                        // Only draw if at least partially visible
+                        if (visibility > 0) {
+                            ctx.globalAlpha = visibility;
+                            
+                            // Draw body
+                            ctx.beginPath();
+                            ctx.arc(screenX, screenY, microbe.radius, 0, Math.PI * 2);
+                            ctx.fillStyle = microbe.color;
+                            ctx.fill();
+                            
+                            // Draw inner circle
+                            ctx.beginPath();
+                            ctx.arc(screenX, screenY, microbe.radius * 0.6, 0, Math.PI * 2);
+                            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                            ctx.fill();
+                            
+                            // Draw flagella (tail) if moving
+                            const dx = microbe.targetX - microbe.x;
+                            const dy = microbe.targetY - microbe.y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            
+                            if (distance > 5) {
+                                const angle = Math.atan2(dy, dx);
+                                const tailLength = microbe.radius * 1.2;
+                                const waveFreq = Date.now() * 0.01 + i * 0.5;
+                                
+                                ctx.beginPath();
+                                ctx.moveTo(
+                                    screenX - Math.cos(angle) * microbe.radius,
+                                    screenY - Math.sin(angle) * microbe.radius
+                                );
+                                
+                                // Simple wavy tail
+                                const wave = Math.sin(waveFreq) * microbe.radius * 0.3;
+                                ctx.lineTo(
+                                    screenX - Math.cos(angle) * (microbe.radius + tailLength) + Math.cos(angle + Math.PI/2) * wave,
+                                    screenY - Math.sin(angle) * (microbe.radius + tailLength) + Math.sin(angle + Math.PI/2) * wave
+                                );
+                                
+                                ctx.strokeStyle = microbe.color;
+                                ctx.lineWidth = 2;
+                                ctx.stroke();
+                            }
+                            
+                            // Reset alpha
+                            ctx.globalAlpha = 1.0;
+                        }
+                    }
+                }
+            }
+            
+            // Draw player
+            function drawPlayer() {
+                const screenX = playerCell.x - camera.x;
+                const screenY = playerCell.y - camera.y;
+                
+                // Draw cell body
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, playerCell.radius, 0, Math.PI * 2);
+                ctx.fillStyle = playerCell.color;
+                ctx.fill();
+                
+                // Draw membrane
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // Draw nucleus
+                ctx.beginPath();
+                ctx.arc(screenX, screenY, playerCell.radius * 0.4, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.fill();
+                
+                // Draw flagella (tail)
+                const dx = playerCell.targetX - playerCell.x;
+                const dy = playerCell.targetY - playerCell.y;
+                const angle = Math.atan2(dy, dx);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance > 5) {
+                    const tailLength = playerCell.radius * 1.5;
+                    const waveAmplitude = playerCell.radius * 0.3;
+                    const waveFreq = Date.now() * 0.01;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(
+                        screenX - Math.cos(angle) * playerCell.radius,
+                        screenY - Math.sin(angle) * playerCell.radius
+                    );
+                    
+                    // Draw wavy tail
+                    for (let i = 0; i < 3; i++) {
+                        const segmentLength = tailLength / 3;
+                        const segmentDist = playerCell.radius + segmentLength * i;
+                        const wave = Math.sin(waveFreq + i) * waveAmplitude * (i + 1) / 3;
+                        
+                        ctx.lineTo(
+                            screenX - Math.cos(angle) * segmentDist + Math.cos(angle + Math.PI/2) * wave,
+                            screenY - Math.sin(angle) * segmentDist + Math.sin(angle + Math.PI/2) * wave
+                        );
+                    }
+                    
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+                
+                // Draw cell features based on evolution
+                if (evolutionLevels.defense > 1) {
+                    // Cell wall
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, playerCell.radius * 1.05, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 3 * (evolutionLevels.defense - 1);
+                    ctx.stroke();
+                }
+                
+                if (evolutionLevels.efficiency > 1) {
+                    // Mitochondria-like structures
+                    for (let i = 0; i < evolutionLevels.efficiency; i++) {
+                        const angle = Math.PI * 2 * (i / evolutionLevels.efficiency);
+                        const mx = screenX + Math.cos(angle) * playerCell.radius * 0.6;
+                        const my = screenY + Math.sin(angle) * playerCell.radius * 0.6;
+                        
+                        ctx.beginPath();
+                        ctx.arc(mx, my, playerCell.radius * 0.15, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(255, 255, 100, 0.5)';
+                        ctx.fill();
+                    }
+                }
+                
+                // Draw sensor range if upgraded
+                if (evolutionLevels.sensing > 1) {
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, playerCell.sensorRange, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }
+            
+            // Draw predators
+            function drawPredators() {
+                for (let i = 0; i < predators.length; i++) {
+                    const predator = predators[i];
+                    const screenX = predator.x - camera.x;
+                    const screenY = predator.y - camera.y;
+                    
+                    // Check if on screen
+                    if (isOnScreen(screenX, screenY, predator.radius)) {
+                        // Check visibility in fog of war
+                        const visibility = isVisibleToPlayer(predator.x, predator.y);
+                        
+                        // Only draw if at least partially visible
+                        if (visibility > 0) {
+                            ctx.globalAlpha = visibility;
+                            
+                            // Draw spiky shape
+                            const spikes = predator.spikes;
+                            const outerRadius = predator.radius;
+                            const innerRadius = predator.radius * 0.8;
+                            
+                            ctx.beginPath();
+                            for (let j = 0; j < spikes * 2; j++) {
+                                const angle = (Math.PI * 2 * j / (spikes * 2)) + predator.rotation;
+                                const radius = j % 2 === 0 ? outerRadius : innerRadius;
+                                const x = screenX + Math.cos(angle) * radius;
+                                const y = screenY + Math.sin(angle) * radius;
+                                
+                                if (j === 0) {
+                                    ctx.moveTo(x, y);
+                                } else {
+                                    ctx.lineTo(x, y);
+                                }
+                            }
+                            ctx.closePath();
+                            ctx.fillStyle = predator.color;
+                            ctx.fill();
+                            
+                            // Draw eye
+                            const eyeX = screenX + predator.radius * 0.3;
+                            const eyeY = screenY - predator.radius * 0.3;
+                            
+                            ctx.beginPath();
+                            ctx.arc(eyeX, eyeY, predator.radius * 0.2, 0, Math.PI * 2);
+                            ctx.fillStyle = 'white';
+                            ctx.fill();
+                            
+                            ctx.beginPath();
+                            ctx.arc(eyeX + 2, eyeY - 2, predator.radius * 0.1, 0, Math.PI * 2);
+                            ctx.fillStyle = 'black';
+                            ctx.fill();
+                            
+                            // Reset alpha
+                            ctx.globalAlpha = 1.0;
+                        }
+                    }
+                }
+            }
+            
+            // Check if object is visible to player based on distance and sensing level
+            function isVisibleToPlayer(x, y) {
+                // Calculate distance from player
+                const dx = x - playerCell.x;
+                const dy = y - playerCell.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Calculate visibility radius based on sensing level
+                const senseLevel = evolutionLevels.sensing;
+                const baseRadius = 120;
+                const visibleRadius = baseRadius + ((senseLevel - 1) * 50);
+                
+                // Object fully visible inside inner radius
+                if (distance < visibleRadius * 0.7) {
+                    return 1.0; // Fully visible
+                } 
+                // Object partially visible in transition zone
+                else if (distance < visibleRadius) {
+                    // Calculate opacity based on distance (linear fade)
+                    return 1.0 - ((distance - (visibleRadius * 0.7)) / (visibleRadius * 0.3));
+                }
+                // Not visible
+                return 0;
+            }
+            
+            // Purchase evolution upgrade
+            function purchaseUpgrade(type) {
+                const level = evolutionLevels[type];
+                let cost;
+                
+                switch(type) {
+                    case 'speed':
+                        cost = 15 * level;
+                        if (playerCell.dna >= cost) {
+                            playerCell.dna -= cost;
+                            evolutionLevels.speed++;
+                            playerCell.speed += 0.5;
+                            showMessage('Speed Boost', 'Your microorganism can now move faster through the primordial soup!');
+                        }
+                        break;
+                    case 'size':
+                        cost = 20 * level;
+                        if (playerCell.dna >= cost) {
+                            playerCell.dna -= cost;
+                            evolutionLevels.size++;
+                            playerCell.radius += 2;
+                            showMessage('Size Increase', 'Your cell has grown larger! You can now consume bigger organisms.');
+                        }
+                        break;
+                    case 'efficiency':
+                        cost = 25 * level;
+                        if (playerCell.dna >= cost) {
+                            playerCell.dna -= cost;
+                            evolutionLevels.efficiency++;
+                            playerCell.digestionEfficiency += 0.3;
+                            showMessage('Digestion Efficiency', 'You now extract more DNA from each organism you consume!');
+                        }
+                        break;
+                    case 'defense':
+                        cost = 30 * level;
+                        if (playerCell.dna >= cost) {
+                            playerCell.dna -= cost;
+                            evolutionLevels.defense++;
+                            playerCell.defense += 0.3;
+                            showMessage('Cell Wall', 'Your cell wall has strengthened, reducing damage from predators!');
+                        }
+                        break;
+                    case 'sensing':
+                        cost = 35 * level;
+                        if (playerCell.dna >= cost) {
+                            playerCell.dna -= cost;
+                            evolutionLevels.sensing++;
+                            playerCell.sensorRange += 50;
+                            showMessage('Chemical Sensing', 'You can now see further and detect food and predators from greater distances!');
+                        }
+                        break;
+                }
+                
+                // Update upgrade buttons
+                updateUpgradeCosts();
+            }
+            
+            // Show message popup
+            function showMessage(title, content, isGameEnd = false) {
+                const messageTitle = document.getElementById('message-title');
+                const messageContent = document.getElementById('message-content');
+                
+                messageTitle.textContent = title;
+                messageContent.textContent = content;
+                
+                // Only show restart button for game over/victory
+                if (isGameEnd) {
+                    restartBtn.style.display = 'block';
+                    // Center the popup for game end messages
+                    messagePopup.style.top = '50%';
+                    messagePopup.style.right = '50%';
+                    messagePopup.style.transform = 'translate(50%, -50%)';
+                    messagePopup.style.width = '250px';
+                } else {
+                    restartBtn.style.display = 'none';
+                    // Side notification for regular messages
+                    messagePopup.style.top = '100px';
+                    messagePopup.style.right = '10px';
+                    messagePopup.style.transform = 'none';
+                    messagePopup.style.width = '200px';
+                }
+                
+                messagePopup.style.display = 'block';
+                
+                // Auto-hide non-critical messages
+                if (!isGameEnd) {
+                    setTimeout(() => {
+                        messagePopup.style.display = 'none';
+                    }, 1500);
+                }
+            }
+            
+            // Game over
+            function gameOver() {
+                // Stop the game loop but keep it running
+                gamePaused = true;
+                
+                // Show game over message with restart button
+                showMessage('Game Over', 'Your microorganism has been consumed by the primordial soup!', true);
+                
+                // Keep gameRunning true to allow restart
+                gameRunning = true;
+            }
+            
+            // Victory
+            function victory() {
+                // Stop the game loop but keep it running
+                gamePaused = true;
+                
+                // Show victory message with restart button
+                showMessage('Evolution Complete!', 'Congratulations! You have survived the cellular stage and are ready to evolve to the next phase of life!', true);
+                
+                // Keep gameRunning true to allow restart
+                gameRunning = true;
+            }
+            
+            // Game initialization
+            function initGame() {
+                // Show tutorial and pause game
+                tutorial.style.display = 'block';
+                gamePaused = true;
+                
+                // Generate game world
+                generateNutrients();
+                generateMicrobes();
+                generatePredators();
+                
+                // Initialize joystick
+                setTimeout(initJoystick, 100);
+                window.addEventListener('resize', initJoystick);
+                
+                // Initialize fog of war
+                initFogOfWar();
+                
+                // Set up event listeners
+                setupEventListeners();
+                
+                // Start game loop
+                gameLoop();
+            }
+            
+            // Restart game
+            function restartGame() {
+                // Hide game over message
+                messagePopup.style.display = 'none';
+                
+                // Reset player
+                playerCell = {
+                    x: WORLD_SIZE / 2,
+                    y: WORLD_SIZE / 2,
+                    radius: 15,
+                    speed: 3,
+                    color: '#4CAF50',
+                    targetX: WORLD_SIZE / 2,
+                    targetY: WORLD_SIZE / 2,
+                    dna: 0,
+                    health: 100,
+                    digestionEfficiency: 1,
+                    defense: 1,
+                    sensorRange: 100,
+                    level: 1,
+                    experience: 0,
+                    experienceToLevel: 100
+                };
+                
+                // Reset camera
+                camera = {
+                    x: playerCell.x - canvas.width / 2,
+                    y: playerCell.y - canvas.height / 2,
+                    smoothing: 0.1
+                };
+                
+                // Reset evolution levels
+                evolutionLevels = {
+                    speed: 1,
+                    size: 1,
+                    efficiency: 1,
+                    defense: 1,
+                    sensing: 1
+                };
+                
+                // Reset joystick
+                joystickActive = false;
+                joystickTouchId = null;
+                joystickKnob.style.transform = 'translate(-50%, -50%)';
+                
+                // Reset upgrade menu
+                upgradeMenuVisible = false;
+                upgradeMenu.style.display = 'none';
+                evolutionBtn.innerHTML = '+';
+                
+                // Clear game elements
+                nutrients = [];
+                microbes = [];
+                predators = [];
+                particles = [];
+                
+                // Regenerate world
+                generateNutrients();
+                generateMicrobes();
+                generatePredators();
+                
+                // Update UI
+                updateUpgradeCosts();
+                
+                // Resume game
+                gameRunning = true;
+                gamePaused = false;
+            }
+            
+            // Set up event listeners
+            function setupEventListeners() {
+                // Evolution button toggles upgrade menu
+                evolutionBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleUpgradeMenu();
+                });
+                
+                // Upgrade buttons
+                speedUpgradeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!this.classList.contains('disabled')) {
+                        purchaseUpgrade('speed');
+                    }
+                });
+                
+                sizeUpgradeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!this.classList.contains('disabled')) {
+                        purchaseUpgrade('size');
+                    }
+                });
+                
+                efficiencyUpgradeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!this.classList.contains('disabled')) {
+                        purchaseUpgrade('efficiency');
+                    }
+                });
+                
+                defenseUpgradeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!this.classList.contains('disabled')) {
+                        purchaseUpgrade('defense');
+                    }
+                });
+                
+                sensingUpgradeBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!this.classList.contains('disabled')) {
+                        purchaseUpgrade('sensing');
+                    }
+                });
+                
+                helpBtn.addEventListener('click', function() {
+                    tutorial.style.display = 'block';
+                    gamePaused = true;
+                });
+                
+                closeTutorialBtn.addEventListener('click', function() {
+                    tutorial.style.display = 'none';
+                    gamePaused = false;
+                });
+                
+                restartBtn.addEventListener('click', restartGame);
+                
+                // Joystick touch/mouse events
+                joystickElement.addEventListener('mousedown', handleJoystickStart);
+                joystickElement.addEventListener('touchstart', handleJoystickStart, { passive: false });
+                window.addEventListener('mousemove', handleJoystickMove);
+                window.addEventListener('touchmove', handleJoystickMove, { passive: false });
+                window.addEventListener('mouseup', handleJoystickEnd);
+                window.addEventListener('touchend', handleJoystickEnd);
+                window.addEventListener('touchcancel', handleJoystickEnd);
+                
+                // Movement control (canvas tap/click)
+                canvas.addEventListener('mousedown', function(e) {
+                    if (gamePaused) return;
+                    
+                    // Ignore if the event is inside the joystick area
+                    const joystickRect = joystickElement.getBoundingClientRect();
+                    if (e.clientX >= joystickRect.left && e.clientX <= joystickRect.right &&
+                        e.clientY >= joystickRect.top && e.clientY <= joystickRect.bottom) {
+                        return;
+                    }
+                    
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    playerCell.targetX = x + camera.x;
+                    playerCell.targetY = y + camera.y;
+                });
+                
+                canvas.addEventListener('touchstart', function(e) {
+                    if (gamePaused) return;
+                    e.preventDefault();
+                    
+                    // Get touch position
+                    const touch = e.touches[0];
+                    
+                    // Ignore if the touch is inside the joystick area
+                    const joystickRect = joystickElement.getBoundingClientRect();
+                    if (touch.clientX >= joystickRect.left && touch.clientX <= joystickRect.right &&
+                        touch.clientY >= joystickRect.top && touch.clientY <= joystickRect.bottom) {
+                        return;
+                    }
+                    
+                    const rect = canvas.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    const y = touch.clientY - rect.top;
+                    
+                    playerCell.targetX = x + camera.x;
+                    playerCell.targetY = y + camera.y;
+                }, { passive: false });
+            }
+            
+            function handleJoystickStart(e) {
+                e.preventDefault();
+                
+                if (gamePaused) return;
+                
+                joystickActive = true;
+                
+                // Capture touch ID for multi-touch support
+                if (e.changedTouches) {
+                    joystickTouchId = e.changedTouches[0].identifier;
+                    updateJoystickPosition(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+                } else {
+                    updateJoystickPosition(e.clientX, e.clientY);
+                }
+            }
+            
+            function handleJoystickMove(e) {
+                if (!joystickActive) return;
+                e.preventDefault();
+                
+                // Find the right touch point
+                if (e.changedTouches) {
+                    for (let i = 0; i < e.changedTouches.length; i++) {
+                        if (e.changedTouches[i].identifier === joystickTouchId) {
+                            updateJoystickPosition(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+                            return;
+                        }
+                    }
+                } else {
+                    updateJoystickPosition(e.clientX, e.clientY);
+                }
+            }
+            
+            function handleJoystickEnd(e) {
+                if (!joystickActive) return;
+                e.preventDefault();
+                
+                // Check if this is the right touch point
+                if (e.changedTouches) {
+                    let touchFound = false;
+                    for (let i = 0; i < e.changedTouches.length; i++) {
+                        if (e.changedTouches[i].identifier === joystickTouchId) {
+                            touchFound = true;
+                            break;
+                        }
+                    }
+                    if (!touchFound) return;
+                }
+                
+                joystickActive = false;
+                joystickTouchId = null;
+            }
+            
+            function updateJoystickPosition(x, y) {
+                joystickPosition = { x, y };
+            }
+            
+            // Start the game
+            initGame();
+        });
+    </script>
+</body>
+</html>
